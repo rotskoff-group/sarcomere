@@ -10,9 +10,9 @@ std::mutex save_mutex;
 // Constructor: Initializes the Langevin object and, if resume is true,
 // loads the previous state and prints details. Otherwise, creates a new file.
 //---------------------------------------------------------------------
-Langevin::Langevin(Sarcomere& model0, double& beta0, double& dt0, double& D0,
+Langevin::Langevin(Sarcomere& model0, double& beta0, double& dt0, double& D0_actin, double& D0_myosin,
                    int& update_myosin_every0, int& update_dt_every0, int& save_every0, bool& resume)
-    : model(model0), beta(beta0), dt(dt0), D(D0),
+    : model(model0), beta(beta0), dt(dt0), D_actin(D0_actin), D_myosin(D0_myosin),
       update_myosin_every(update_myosin_every0), update_dt_every(update_dt_every0),
       save_every(save_every0), acc_rate(0)
 {
@@ -59,7 +59,26 @@ void Langevin::run_langevin(int nsteps, gsl_rng* rng, int& fix_myosin) {
             model.save_state();
             start = omp_get_wtime();
         }
-        sample_step(dt, D, rng, fix_myosin);
+        model.update_system();
+        sample_step(dt, D_actin, D_myosin, rng, fix_myosin);
+        if (i % save_every == 0) {
+            end = omp_get_wtime();
+            printf("Step %d took %f seconds\n", i, end - start);
+        }
+    }
+}
+
+void Langevin::volume_exclusion(int nsteps, gsl_rng* rng, int& fix_myosin) {
+    double start, end;
+    for (int i = 0; i < nsteps; i++) {
+        if (i % save_every == 0) {
+            std::cout << "Step " << i << std::endl;
+            // Optionally protect saving with the mutex:
+            // std::lock_guard<std::mutex> lock(save_mutex);
+            start = omp_get_wtime();
+        }
+        model.update_system_sterics_only();
+        sample_step(dt, D_actin, D_myosin, rng, fix_myosin);
         if (i % save_every == 0) {
             end = omp_get_wtime();
             printf("Step %d took %f seconds\n", i, end - start);
@@ -71,9 +90,7 @@ void Langevin::run_langevin(int nsteps, gsl_rng* rng, int& fix_myosin) {
 // sample_step: Performs a single Langevin dynamics step by updating the 
 // system, generating noise, and displacing myosin and actin particles.
 //---------------------------------------------------------------------
-void Langevin::sample_step(double& dt, double& D, gsl_rng* rng, int& fix_myosin) {
-    model.update_system();
-
+void Langevin::sample_step(double& dt, double& D_actin, double& D_myosin, gsl_rng* rng, int& fix_myosin) {
     // Generate noise for both myosin and actin particles.
     int n_randns = (model.myosin.n + model.actin.n) * 3;
     std::vector<double> noise(n_randns);
@@ -88,7 +105,7 @@ void Langevin::sample_step(double& dt, double& D, gsl_rng* rng, int& fix_myosin)
     }
 
     int offset = model.myosin.n * 3;
-
+    double D = D_myosin;
     // Update myosin particles.
     for (int i = fix_myosin; i < model.myosin.n; i++) {
         double dx = model.myosin.force[i].x * beta * D * dt +
@@ -101,7 +118,7 @@ void Langevin::sample_step(double& dt, double& D, gsl_rng* rng, int& fix_myosin)
                         sqrt(2 * D * dt) * noise[i * 3 + 2] * M_PI / 5;
         model.myosin.displace(i, dx, dy, dtheta);
     }
-
+    D = D_actin;
     // Update actin particles.
     for (int i = 0; i < model.actin.n; i++) {
         double dx = model.actin.force[i].x * beta * D * dt +

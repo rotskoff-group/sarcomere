@@ -25,7 +25,7 @@ Filament::Filament(int n0, double length0, std::vector<double> box0, gsl_rng* rn
     force.resize(n);
     angular_force.resize(n);
     velocity.resize(n);
-    tension.resize(n);
+    f_load.resize(n);
     cb_strength.resize(n);
     
     // Randomly initialize the center positions and theta values.
@@ -55,7 +55,7 @@ Filament::Filament(const Filament& other) {
     force = other.force;
     angular_force = other.angular_force;
     velocity = other.velocity;
-    tension = other.tension;
+    f_load = other.f_load;
     custom_features = other.custom_features;
 }
 

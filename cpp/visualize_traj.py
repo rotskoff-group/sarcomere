@@ -35,8 +35,12 @@ def plot_filaments(center,thetas,l,Lx,Ly,ax,color='k',color_spectrum=None,transp
         if color_spectrum is not None:
             color = custom_colormap(norm(color_spectrum[i]))
         
+        if transparency is not None:
+            transparency[i] = np.clip(transparency[i],0,1)
+            kwargs['alpha'] = 0.3 + 0.7 * transparency[i]
+            
         # transparency is 0.3 where color_spectrum is 0 and 1 elsewhere
-        if color_spectrum is not None:
+        if color_spectrum is not None and transparency is None:
             alpha = 0.3 + 0.7 * (color_spectrum[i] > 0)
             kwargs['alpha'] = alpha
 
@@ -131,22 +135,23 @@ def plot_system(frame,data,myosin_radius,actin_length,myosin_length, Lx,Ly):
         actin_center = data["/actin/center"][frame]
         #color is based on cb_flag
         cb_strength = data["/actin/cb_strength"][frame].flatten()
+        f_load = data["/actin/f_load"][frame].flatten()
+        cb_strength = cb_strength*f_load
         binding_ratio = data["/actin/partial_binding_ratio"][frame].flatten()
         binding_ratio = np.clip(binding_ratio*3,0,1)
         crosslinking_ratio = data["/actin/crosslink_ratio"][frame].flatten()
         crosslinking_ratio = np.clip(crosslinking_ratio*3,0,1)
+        actin_velocity = data["/actin/velocity"][frame]
+        velocity_theta = np.arctan2(actin_velocity[:,1],actin_velocity[:,0])
+        velocity_mag = np.linalg.norm(actin_velocity,axis=-1)/5
         plot_filaments(actin_center, data["/actin/theta"][frame][:,0],actin_length,Lx=Lx, Ly=Ly,ax=ax, color_spectrum=cb_strength)
         # actin_force = data["/actin/force"][frame]/10
         # force_theta = np.arctan2(actin_force[:,1],actin_force[:,0])
         # force_mag = np.linalg.norm(actin_force,axis=-1)
         # force_centers = actin_center + actin_force/2
         # plot_filaments(force_centers, force_theta,force_mag,Lx=Lx, Ly=Ly,ax=ax, color='grey',linestyle='dashed')
-
-        actin_velocity = data["/actin/velocity"][frame]/10
-        velocity_theta = np.arctan2(actin_velocity[:,1],actin_velocity[:,0])
-        velocity_mag = np.linalg.norm(actin_velocity,axis=-1)
-        velocity_centers = actin_center + actin_velocity/2
-        #plot_filaments(velocity_centers, velocity_theta,velocity_mag,Lx=Lx, Ly=Ly,ax=ax, color='pink',linestyle='dashed',alpha=0.2)
+        # velocity_centers = actin_center + actin_velocity/2
+        # plot_filaments(velocity_centers, velocity_theta,velocity_mag,Lx=Lx, Ly=Ly,ax=ax, color='pink',linestyle='dashed',alpha=0.8)
 
         actin_angular_force = data["/actin/angular_force"][frame][:,0]
         angular_theta = ((actin_angular_force>0)-0.5)*np.pi
@@ -165,7 +170,7 @@ def plot_system(frame,data,myosin_radius,actin_length,myosin_length, Lx,Ly):
         #plot_filaments(data["/myosin/center"][frame],angular_theta,np.abs(myosin_angular_force),Lx=Lx, Ly=Ly,ax=ax, color='pink',linestyle='dotted')
         ax.set_xlim(-Lx/2, Lx/2)
         ax.set_ylim(-Ly/2, Ly/2)
-        #ax.set_aspect("equal")
+        ax.set_aspect("equal")
         return fig,ax
 
 def plot(ind, nframes, nworkers,**kwargs):
@@ -242,3 +247,4 @@ if __name__ == "__main__":
     Parallel(n_jobs=cpu_workers)(delayed(plot)(i, nframes, cpu_workers,
         data=data, myosin_radius=myosin_radius, 
         actin_length=actin_length, myosin_length=myosin_length, Lx=Lx, Ly=Ly) for i in range(cpu_workers))
+    

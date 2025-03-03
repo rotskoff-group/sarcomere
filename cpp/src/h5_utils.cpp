@@ -151,6 +151,7 @@ void create_file(std::string& filename, Filament& actin, Myosin& myosin)
     create_empty_dataset(file, "/actin", "theta", initialDims, maxDims, chunkDims);
     create_empty_dataset(file, "/actin", "angular_force", initialDims, maxDims, chunkDims);
     create_empty_dataset(file, "/actin", "cb_strength", initialDims, maxDims, chunkDims);
+    create_empty_dataset(file, "/actin", "f_load", initialDims, maxDims, chunkDims);
 
     // Create datasets for any custom actin features.
     for (const auto& feature : actin.custom_features) {
@@ -182,8 +183,7 @@ void create_file(std::string& filename, Filament& actin, Myosin& myosin)
     create_empty_dataset(file, "/actin", "indices_per_actin", initialDims, maxDims, chunkDims);
 }
 
-void append_to_file(std::string& filename, Filament& actin, Myosin& myosin,
-                    double& total_energy, utils::MoleculeConnection& actinIndicesPerActin)
+void append_to_file(std::string& filename, Filament& actin, Myosin& myosin)
 {
     H5::H5File file(filename, H5F_ACC_RDWR);
     H5::Group group_actin(file.openGroup("/actin"));
@@ -204,6 +204,7 @@ void append_to_file(std::string& filename, Filament& actin, Myosin& myosin,
     append_to_dataset(group_actin, "theta", actin.theta, {1, n_actins, 1});
     append_to_dataset(group_actin, "angular_force", actin.angular_force, {1, n_actins, 1});
     append_to_dataset(group_actin, "cb_strength", actin.cb_strength, {1, n_actins, 1});
+    append_to_dataset(group_actin, "f_load", actin.f_load, {1, n_actins, 1});
 
     for (const auto& feature : actin.custom_features) {
         append_to_dataset(group_actin, feature.first, feature.second, {1, n_actins, 1});
@@ -225,20 +226,20 @@ void append_to_file(std::string& filename, Filament& actin, Myosin& myosin,
         append_to_dataset(group_myosin, feature.first, feature.second, {1, n_myosins, 1});
     }
 
-    int max_bonds = 5;
-    // Serialize actinIndicesPerActin.
-    auto serialized_indices = serializeActinIndicesPerActin(actinIndicesPerActin, actin.n, max_bonds);
+    // int max_bonds = 5;
+    // // Serialize actinIndicesPerActin.
+    // auto serialized_indices = serializeActinIndicesPerActin(actinIndicesPerActin, actin.n, max_bonds);
 
-    // Flatten the serialized indices into a 1D array.
-    std::vector<double> flattened_indices;
-    for (const auto& indices : serialized_indices) {
-        for (int index : indices) {
-            flattened_indices.push_back(static_cast<double>(index));
-        }
-    }
-    // Append the serialized indices to the dataset.
-    append_to_dataset(group_actin, "indices_per_actin", flattened_indices,
-                        {1, n_actins, static_cast<hsize_t>(max_bonds)});
+    // // Flatten the serialized indices into a 1D array.
+    // std::vector<double> flattened_indices;
+    // for (const auto& indices : serialized_indices) {
+    //     for (int index : indices) {
+    //         flattened_indices.push_back(static_cast<double>(index));
+    //     }
+    // }
+    // // Append the serialized indices to the dataset.
+    // append_to_dataset(group_actin, "indices_per_actin", flattened_indices,
+    //                     {1, n_actins, static_cast<hsize_t>(max_bonds)});
 }
 
 std::vector<double> load_from_dataset(H5::Group& group, const std::string& datasetName,
@@ -266,8 +267,7 @@ std::vector<double> load_from_dataset(H5::Group& group, const std::string& datas
     return data;
 }
 
-void load_from_file(std::string& filename, Filament& actin, Myosin& myosin,
-                    double& total_energy)
+void load_from_file(std::string& filename, Filament& actin, Myosin& myosin)
 {
     H5::H5File file(filename, H5F_ACC_RDONLY);
     H5::Group group_actin(file.openGroup("/actin"));

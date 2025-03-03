@@ -34,11 +34,14 @@ public:
     std::vector<std::vector<int>> actin_actin_bonds, actin_actin_bonds_prev;
     vector box;
     double k_aa, kappa_aa, cb_mult_factor, k_on, k_off,
-           kappa_am, k_am, v_am, crosslinker_length, skin_distance, total_energy, cutoff_radius;
+           kappa_am, k_am, v_am, crosslinker_length, skin_distance, cutoff_radius,
+           dt, base_lifetime, lifetime_coeff, diff_coeff_ratio;
+    bool directional;
     int fix_myosin;
     std::vector<std::vector<interaction>> am_interaction;
     vector actin_crosslink_ratio;
     std::vector<int> actin_n_bonds;
+    std::vector<int> n_myosins_per_actin;
     std::vector<std::pair<std::vector<int>, std::vector<int>>> actin_neighbors_by_species;
     vector actin_basic_tension;
         
@@ -55,8 +58,8 @@ public:
     Sarcomere();
     Sarcomere(int& n_actins, int& n_myosins, vector box0, double& actin_length, double& myosin_length,
               double& myosin_radius, double& crosslinker_length, double& k_on, double& k_off,
-              double& cb_mult_factor, double& k_aa, double& kappa_aa, double& k_am, double& kappa_am, double& v_am,
-              std::string& filename, gsl_rng* rng, int& seed, int& fix_myosin);
+              double& base_lifetime, double& lifetime_coeff, double& diff_coeff_ratio, double& k_aa, double& kappa_aa, double& k_am, double& kappa_am, double& v_am,
+              std::string& filename, gsl_rng* rng, int& seed, int& fix_myosin, double& dt, bool& directional);
     ~Sarcomere();
 
     // Public Methods
@@ -66,6 +69,7 @@ public:
     void bad_cb();
     void sarcomeric_structure();
     void update_system();
+    void update_system_sterics_only();
     void new_file();
     void save_state();
     void load_state();
@@ -78,9 +82,11 @@ private:
     void _process_catch_bonds(int& i);
     void _actin_myosin_force(int& i);
     void _volume_exclusion();
+    void _myosin_exclusion();
     void _myosin_repulsion(int& i, int& j);
     void _actin_repulsion(int& i, int& j);
     double _get_cb_strength(int& i, int& j);
+    void _get_f_load(int& i, int& j);
     void _set_cb(int& i, int& j, double& normalized_strength, bool& add_connection);
     void _set_cb(int& i, std::vector<int> indices, vector cb_strength);
 };

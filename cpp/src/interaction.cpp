@@ -110,11 +110,12 @@ std::vector<double> compute_aa_force_and_energy(Filament& actin,
     return forces;
 }
 
+
 std::vector<double> compute_am_force_and_energy(Filament& actin, Myosin& myosin,
                                                 int& actin_index, int& myosin_index,
                                                 const std::vector<double>& box,
                                                 const double k_am, const double kappa_am,
-                                                const double myosin_radius, const bool turn_on_spring)
+                                                const double myosin_radius)
 {
     ArrayXreal center1(2);
     center1 << actin.center[actin_index].x, actin.center[actin_index].y;
@@ -125,7 +126,7 @@ std::vector<double> compute_am_force_and_energy(Filament& actin, Myosin& myosin,
     real u;
     std::vector<double> forces;
     VectorXd forces_2;
-    if (turn_on_spring) {
+    if (k_am > 1e-6) {
         forces_2 = -gradient(am_energy1, wrt(center1, theta1, theta2),
                              at(center1, actin.length, theta1,
                                 center2, myosin.length, theta2, box, k_am, kappa_am, myosin_radius), u);

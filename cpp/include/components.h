@@ -28,7 +28,7 @@ public:
     std::vector<vec> force;
     std::vector<double> angular_force;
     std::vector<vec> velocity;
-    std::vector<double> tension;
+    std::vector<double> f_load;
     std::vector<double> cb_strength;
 
     // Dictionary to store 1D features.

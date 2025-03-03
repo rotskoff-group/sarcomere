@@ -158,6 +158,6 @@ std::vector<double> compute_am_force_and_energy(Filament& actin, Myosin& myosin,
                                                 int& actin_index, int& myosin_index,
                                                 const std::vector<double>& box,
                                                 const double k_am, const double kappa_am,
-                                                const double myosin_radius, const bool turn_on_spring);
+                                                const double myosin_radius);
 
 #endif  // INTERACTION_H
