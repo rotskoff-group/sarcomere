@@ -158,11 +158,11 @@ def plot_system(frame,data,myosin_radius,actin_length,myosin_length, Lx,Ly):
         #plot_filaments(actin_center,angular_theta,np.abs(actin_angular_force),Lx=Lx, Ly=Ly,ax=ax, color='pink',linestyle='dotted')
         plot_myosin(data["/myosin/center"][frame], data["/myosin/theta"][frame][:,0],myosin_length,Lx=Lx, Ly=Ly,radius=myosin_radius,ax=ax,color='C1')
 
-        myosin_force = data["/myosin/velocity"][frame]
+        myosin_force = data["/myosin/force"][frame]
         force_theta = np.arctan2(myosin_force[:,1],myosin_force[:,0])
         force_mag = np.linalg.norm(myosin_force,axis=-1)
         force_centers = data["/myosin/center"][frame] + myosin_force/2
-        #plot_filaments(force_centers, force_theta,force_mag,Lx=Lx, Ly=Ly,ax=ax,color='pink',linestyle='dashed')
+        plot_filaments(force_centers, force_theta,force_mag,Lx=Lx, Ly=Ly,ax=ax,color='pink',linestyle='dashed')
 
         myosin_angular_force = data["/myosin/angular_force"][frame][:,0]
         myosin_theta = data["/myosin/theta"][frame][:,0]
@@ -236,6 +236,7 @@ if __name__ == "__main__":
         myosin_center = data["/myosin/center"][args.print_frame]
         for i in range(myosin_center.shape[0]):
             print(f"Myosin filament {i}: center: {myosin_center[i]}")
+            print(f"Myosin filament {i}: force: {data['/myosin/force'][args.print_frame][i]}")
 
 
     cpu_workers = joblib.cpu_count()

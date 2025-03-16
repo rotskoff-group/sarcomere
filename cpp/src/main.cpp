@@ -52,7 +52,7 @@ int main(int argc, char* argv[]){
             ("update_dt_every", "Update dt every", cxxopts::value<int>(update_dt_every)->default_value("500"))
             ("update_myosin_every", "Update myosin every", cxxopts::value<int>(update_myosin_every)->default_value("1"))
             ("save_every", "Save every", cxxopts::value<int>(save_every)->default_value("200"))
-            ("k_on", "k_on", cxxopts::value<double>(k_on)->default_value("100"))
+            ("k_on", "k_on", cxxopts::value<double>(k_on)->default_value("1000"))
             ("k_off", "k_off", cxxopts::value<double>(k_off)->default_value("1"))
             ("base_lifetime", "Base lifetime", cxxopts::value<double>(base_lifetime)->default_value("0.001"))
             ("lifetime_coeff", "Lifetime coefficient", cxxopts::value<double>(lifetime_coeff)->default_value("0.4"))
@@ -120,7 +120,9 @@ int main(int argc, char* argv[]){
             sim.model.bad_cb();
         }
     }
-    sim.volume_exclusion(5000, rng,n_fixed_myosins);
+    if (!resume){
+        sim.volume_exclusion(5000, rng,n_fixed_myosins);
+    }
     sim.run_langevin(nsteps, rng, n_fixed_myosins);
     gsl_rng_free(rng);
     return 0;

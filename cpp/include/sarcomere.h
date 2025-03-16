@@ -50,7 +50,7 @@ public:
 
     std::vector<std::vector<vec>> actin_forces_temp;
     std::vector<std::vector<vec>> myosin_forces_temp, myosin_velocities_temp;
-    std::vector<std::vector<double>> actin_angular_forces_temp, myosin_angular_forces_temp, actin_cb_strengths_temp;
+    std::vector<std::vector<double>> actin_angular_forces_temp, myosin_angular_forces_temp, actin_cb_strengths_temp, myosin_f_load_temp;
     std::vector<utils::MoleculeConnection> actinIndicesPerMyosin_temp;
     std::vector<gsl_rng*> rng_engines;
 
@@ -80,7 +80,7 @@ private:
     void _set_to_zero();
     void _process_actin_myosin_binding(int& i);
     void _process_catch_bonds(int& i);
-    void _actin_myosin_force(int& i);
+    void _calc_am_force_velocity(int& i);
     void _volume_exclusion();
     void _myosin_exclusion();
     void _myosin_repulsion(int& i, int& j);
