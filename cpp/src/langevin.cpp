@@ -131,7 +131,7 @@ void Langevin::sample_step(double& dt, double& D_actin, double& D_myosin, gsl_rn
                         sqrt(2 * D * dt) * noise[offset + i * 3 + 2] * M_PI / 5;
 
         // (Optional debug printing if the displacement is large.)
-        if (dx > 0.01 || dy > 0.01) {
+        if (dx > 0.03 || dy > 0.03) {
             printf("actin %d\n", i);
             printf("dx: %f dy: %f\n", dx, dy);
             printf("force: %f %f\n", model.actin.force[i].x, model.actin.force[i].y);

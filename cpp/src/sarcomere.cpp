@@ -94,9 +94,9 @@ void Sarcomere::partial_fix(int& n_fixed){
         myosin.center[i].y = myosin_positions[i][1];
         myosin.theta[i] = 0;
     }
-    for (int i = 0; i <myosin.n; i++){
-        myosin.theta[i] = 0;
-    }
+    // for (int i = 0; i <myosin.n; i++){
+    //     myosin.theta[i] = 0;
+    // }
     myosin.update_endpoints();
     update_system();
 }
@@ -420,8 +420,9 @@ void Sarcomere::_calc_am_force_velocity(int& i) {
     for (int index = 0; index < myosin_indices.size(); index++) {
         int j = myosin_indices[index];
         double k_am_adjusted = k_am * actin.cb_strength[i] * actin.f_load[i] * (actin["partial_binding_ratio"][i]>EPS);
+        double kappa_am_adjusted = kappa_am*std::max(actin["partial_binding_ratio"][i]*3,1.);
         vector force_vec = compute_am_force_and_energy(
-            actin, myosin, i, j, box, k_am_adjusted, kappa_am, myosin.radius);
+            actin, myosin, i, j, box, k_am_adjusted, kappa_am_adjusted, myosin.radius);
         local_actin_forces[i].x += force_vec[0];
         local_actin_forces[i].y += force_vec[1];
         local_myosin_forces[j].x -= force_vec[0];
@@ -554,41 +555,47 @@ void Sarcomere::_actin_repulsion(int& i, int& j){
     center_displacement.pbc_wrap(box);
     double center_distance = center_displacement.norm();
     if (center_distance<=crosslinker_length+actin.length){
-        auto& local_actin_forces = actin_forces_temp[thread_id];
-        auto result = geometry::segment_segment_distance_w_normal(actin.left_end[i], 
-            actin.right_end[i], actin.left_end[j], actin.right_end[j], box);
-        double distance = result.first;
-        double min_dist = 0.01;
-        if (distance < min_dist){
-            vec normal_vector = result.second["vector"];
-            double norm = normal_vector.norm();
-            double factor = std::min(10*(min_dist - distance)/min_dist,3.);
-            if (norm==0){
-                normal_vector.x = center_displacement.x;
-                normal_vector.y = center_displacement.y;
-                normal_vector = normal_vector/center_distance;
-            }
-            else {
-                normal_vector = normal_vector/norm;
-            }
-        
-            if (actin.cb_strength[i]>0.3 && actin.cb_strength[j]<0.3){
-                //move actin j only
-                local_actin_forces[j] = local_actin_forces[j]-2*factor*normal_vector;
-            }
-            else if (actin.cb_strength[i]<0.3 && actin.cb_strength[j]>0.3){
-                //move actin i only
-                local_actin_forces[i] = local_actin_forces[i]+2*factor*normal_vector;
-            }
-            else{
-                local_actin_forces[i] = local_actin_forces[i]+factor*normal_vector;
-                local_actin_forces[j] = local_actin_forces[j]-factor*normal_vector;
-            }
-            // printf("actin %d and actin %d: (%f, %f), (%f, %f), distance: %f \n", i, j, actin.center[i].x, actin.center[i].y, actin.center[j].x, actin.center[j].y, distance);
-            // printf("force for actin %d: %f, %f \n", i, local_actin_forces[i].x, local_actin_forces[i].y);
-            // printf("force for actin %d: %f, %f \n", j, local_actin_forces[j].x, local_actin_forces[j].y);
+        double angle_diff = fabs(actin.theta[i] - actin.theta[j]);
+        if (angle_diff > M_PI) {
+            angle_diff = 2* M_PI - angle_diff;
         }
-
+        // Only apply repulsion if the angle difference is less than 10 degrees
+        if (angle_diff < M_PI/18) {
+            auto& local_actin_forces = actin_forces_temp[thread_id];
+            auto result = geometry::segment_segment_distance_w_normal(actin.left_end[i], 
+                actin.right_end[i], actin.left_end[j], actin.right_end[j], box);
+            double distance = result.first;
+            double min_dist = 0.01;
+            if (distance < min_dist){
+                vec normal_vector = result.second["vector"];
+                double norm = normal_vector.norm();
+                double factor = std::min(10*(min_dist - distance)/min_dist,3.);
+                if (norm==0){
+                    normal_vector.x = center_displacement.x;
+                    normal_vector.y = center_displacement.y;
+                    normal_vector = normal_vector/center_distance;
+                }
+                else {
+                    normal_vector = normal_vector/norm;
+                }
+            
+                if (actin.cb_strength[i]>0.3 && actin.cb_strength[j]<0.3){
+                    //move actin j only
+                    local_actin_forces[j] = local_actin_forces[j]-2*factor*normal_vector;
+                }
+                else if (actin.cb_strength[i]<0.3 && actin.cb_strength[j]>0.3){
+                    //move actin i only
+                    local_actin_forces[i] = local_actin_forces[i]+2*factor*normal_vector;
+                }
+                else{
+                    local_actin_forces[i] = local_actin_forces[i]+factor*normal_vector;
+                    local_actin_forces[j] = local_actin_forces[j]-factor*normal_vector;
+                }
+                // printf("actin %d and actin %d: (%f, %f), (%f, %f), distance: %f \n", i, j, actin.center[i].x, actin.center[i].y, actin.center[j].x, actin.center[j].y, distance);
+                // printf("force for actin %d: %f, %f \n", i, local_actin_forces[i].x, local_actin_forces[i].y);
+                // printf("force for actin %d: %f, %f \n", j, local_actin_forces[j].x, local_actin_forces[j].y);
+            }
+        }
     }
 }
 

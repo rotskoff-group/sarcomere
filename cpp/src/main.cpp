@@ -45,7 +45,7 @@ int main(int argc, char* argv[]){
         options.add_options()
             ("nsteps", "Number of steps", cxxopts::value<int>(nsteps)->default_value("500000"))
             ("seed", "Seed value", cxxopts::value<int>(seed)->default_value("0"))
-            ("dt", "Time step", cxxopts::value<double>(dt)->default_value("0.00001"))
+            ("dt", "Time step", cxxopts::value<double>(dt)->default_value("0.00005"))
             ("beta", "Beta value", cxxopts::value<double>(beta)->default_value("241.0"))
             ("actin_diff_coeff", "Actin diffusion coefficient", cxxopts::value<double>(actin_diff_coeff)->default_value("0.1"))
             ("myosin_diff_coeff", "Myosin diffusion coefficient", cxxopts::value<double>(myosin_diff_coeff)->default_value("0.01"))
@@ -104,9 +104,6 @@ int main(int argc, char* argv[]){
     if (!resume){
         if (init_struc == "sarcomere") {
         sim.model.sarcomeric_structure();}
-        // else if (init_struc == "sarcomere"){
-        //     sim.model.sarcomeric_structure();
-        // }
         else if (init_struc == "n_fixed_myosins"){
             sim.model.myosin_on_a_lattice();
         }
@@ -119,9 +116,9 @@ int main(int argc, char* argv[]){
         else if (init_struc == "bad_cb"){
             sim.model.bad_cb();
         }
-    }
-    if (!resume){
-        sim.volume_exclusion(5000, rng,n_fixed_myosins);
+        else{
+            sim.volume_exclusion(5000, rng,n_fixed_myosins);
+        }
     }
     sim.run_langevin(nsteps, rng, n_fixed_myosins);
     gsl_rng_free(rng);
