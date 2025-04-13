@@ -113,11 +113,8 @@ void angle_wrap(double& theta);
 // Compute the dot product of two 2D vectors (given as four doubles).
 double dotProduct(double x1, double y1, double x2, double y2);
 
-// Given two segments (defined by their endpoints) and a distance d, compute the
-// ratio between the two points on segment 1 that are at distance d from segment 2.
-double analyze_overlap(double* P1_left, double* P1_right, 
-                         double* P2_left, double* P2_right, double d, 
-                         std::vector<double> box);
+bool compare_indices(const std::vector<int>& a, const std::vector<int>& b);
+
 
 //------------------------------------------------------------------------------
 // MoleculeConnection class declaration

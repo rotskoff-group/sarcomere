@@ -64,7 +64,6 @@ void NeighborList::initialize(const std::vector<vec>& actin_positions, const std
 
 // Rebuild the neighbor list using a cell list approach.
 void NeighborList::rebuild_neighbor_list() {
-    printf("Rebuilding neighbor list\n");
 
     // Clear the previous neighbor list and cell list.
     neighbor_list_.clear();

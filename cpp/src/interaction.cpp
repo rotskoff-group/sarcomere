@@ -64,7 +64,7 @@ real am_energy1(const ArrayXreal& center1, const double& length1, const real& th
     angle_wrap(angle);
     angle = abs(angle);
     angle = (angle < M_PI - angle) ? angle : (M_PI - angle);
-    if (dist.val() > 0.8 * myosin_radius) {
+    if (dist.val() > 0.85 * myosin_radius) {
         if (dist.val() > myosin_radius) {
             printf("dist: %f\n", dist.val());
             printf("endpoints after: %f %f %f %f %f %f %f %f\n",
@@ -72,10 +72,12 @@ real am_energy1(const ArrayXreal& center1, const double& length1, const real& th
                    val(c[0]), val(c[1]), val(d[0]), val(d[1]));
             printf("something is wrong\n");
         }
-        return 0.5 * k_am * val(strength) * dist * dist + 0.5 * kappa_am * angle * angle;
+        real offset = dist - 0.85 * myosin_radius;
+        return 0.5 * k_am * val(strength) * offset * offset + 0.5 * kappa_am * angle * angle;
     }
     else {
-        real energy = 0.5 * (k_am / 10) * val(strength) * dist * dist + 0.5 * kappa_am * angle * angle;
+        //real energy = 0.5 * (k_am / 10) * val(strength) * dist * dist + 0.5 * kappa_am * angle * angle;
+        real energy = 0.5 * kappa_am * angle * angle;
         return energy;
     }
 }

@@ -20,51 +20,15 @@ double dotProduct(double x1, double y1, double x2, double y2) {
     return x1 * x2 + y1 * y2;
 }
 
-double analyze_overlap(double* P1_left, double* P1_right, 
-                         double* P2_left, double* P2_right, double d, 
-                         std::vector<double> box) {
-    // Direction vector of segment 1.
-    double dir1_x = P1_right[0] - P1_left[0];
-    double dir1_y = P1_right[1] - P1_left[1];
-
-    // Direction vector of segment 2.
-    double dir2_x = P2_right[0] - P2_left[0];
-    double dir2_y = P2_right[1] - P2_left[1];
-
-    // Wrap the directional components.
-    pbc_wrap(dir1_x, box[0]);
-    pbc_wrap(dir1_y, box[1]);
-    pbc_wrap(dir2_x, box[0]);
-    pbc_wrap(dir2_y, box[1]);
-
-    // Compute the normal vector (perpendicular) of segment 2.
-    double nx2 = -dir2_y;
-    double ny2 = dir2_x;
-
-    // Normalize the normal vector.
-    double norm_factor = std::sqrt(nx2 * nx2 + ny2 * ny2);
-    nx2 /= norm_factor;
-    ny2 /= norm_factor;
-
-    // Compute the vector from the left endpoint of segment 2 to that of segment 1.
-    std::vector<double> left_vec = { P1_left[0] - P2_left[0], P1_left[1] - P2_left[1] };
-    pbc_wrap(left_vec[0], box[0]);
-    pbc_wrap(left_vec[1], box[1]);
-
-    // Project the left_vec and segment 1 direction onto the normal.
-    double dot1 = dotProduct(left_vec[0], left_vec[1], nx2, ny2);
-    double dot2 = dotProduct(dir1_x, dir1_y, nx2, ny2);
-
-    // Calculate the parameter values along segment 1.
-    double t1 = (d - dot1) / dot2;
-    double t2 = (-d - dot1) / dot2;
-
-    // Clamp t1 and t2 to the [0, 1] range.
-    t1 = std::max(0.0, std::min(1.0, t1));
-    t2 = std::max(0.0, std::min(1.0, t2));
-
-    double ratio = std::abs(t1 - t2);
-    return ratio;
+bool compare_indices(const std::vector<int>& a, const std::vector<int>& b) {
+    if (a.size() != b.size()) {
+        return false;
+    }
+    std::vector<int> sorted_a = a;
+    std::vector<int> sorted_b = b;
+    std::sort(sorted_a.begin(), sorted_a.end());
+    std::sort(sorted_b.begin(), sorted_b.end());
+    return std::equal(sorted_a.begin(), sorted_a.end(), sorted_b.begin());
 }
 
 //------------------------------------------------------------------------------

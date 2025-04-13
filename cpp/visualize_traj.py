@@ -11,6 +11,8 @@ import os
 import sys
 import argparse
 
+os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
+
 def plot_filaments(center,thetas,l,Lx,Ly,ax,color='k',color_spectrum=None,transparency=None,**kwargs):
     #check if l is a scalar or an array
     if np.isscalar(l):
@@ -237,7 +239,6 @@ if __name__ == "__main__":
         for i in range(myosin_center.shape[0]):
             print(f"Myosin filament {i}: center: {myosin_center[i]}")
             print(f"Myosin filament {i}: force: {data['/myosin/force'][args.print_frame][i]}")
-
 
     cpu_workers = joblib.cpu_count()
 

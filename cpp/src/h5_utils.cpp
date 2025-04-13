@@ -181,10 +181,25 @@ void create_file(std::string& filename, Filament& actin, Myosin& myosin)
     maxDims     = {H5S_UNLIMITED, n_actins, 5};
     chunkDims   = {10, n_actins, 5};
     create_empty_dataset(file, "/actin", "indices_per_actin", initialDims, maxDims, chunkDims);
+
+    hsize_t max_n_actin_bonds = n_actins * 5;
+
+    initialDims = {0, max_n_actin_bonds, 2};
+    maxDims     = {H5S_UNLIMITED, max_n_actin_bonds, 2};
+    chunkDims   = {10, max_n_actin_bonds, 2};
+    create_empty_dataset(file, "/actin", "bonds", initialDims, maxDims, chunkDims);
+
+    hsize_t max_n_myosin_bonds = n_myosins * 4;
+    initialDims = {0, max_n_myosin_bonds, 2};
+    maxDims     = {H5S_UNLIMITED, max_n_myosin_bonds, 2};
+    chunkDims   = {10, max_n_myosin_bonds, 2};
+    create_empty_dataset(file, "/myosin", "bonds", initialDims, maxDims, chunkDims);
 }
 
-void append_to_file(std::string& filename, Filament& actin, Myosin& myosin)
-{
+
+void append_to_file(std::string& filename, Filament& actin, Myosin& myosin, 
+    std::vector<double>& flatActinBonds, 
+    std::vector<double>& flatMyosinBonds){
     H5::H5File file(filename, H5F_ACC_RDWR);
     H5::Group group_actin(file.openGroup("/actin"));
     H5::Group group_myosin(file.openGroup("/myosin"));
@@ -225,6 +240,40 @@ void append_to_file(std::string& filename, Filament& actin, Myosin& myosin)
     for (const auto& feature : myosin.custom_features) {
         append_to_dataset(group_myosin, feature.first, feature.second, {1, n_myosins, 1});
     }
+
+
+    // Compute maximum possible bonds per frame.
+    int max_n_actin_bonds = actin.n * 5;
+    int max_n_myosin_bonds = myosin.n * 4;
+
+    // Compute current number of bonds (each bond occupies two entries).
+    int current_n_actinBonds = static_cast<int>(flatActinBonds.size()) / 2;
+    int current_n_myosinBonds = static_cast<int>(flatMyosinBonds.size()) / 2;
+
+    // Pad flatActinBonds if needed.
+    if (current_n_actinBonds < max_n_actin_bonds) {
+        int padRows = max_n_actin_bonds - current_n_actinBonds;
+        for (int i = 0; i < padRows; i++) {
+            flatActinBonds.push_back(-1);
+            flatActinBonds.push_back(-1);
+        }
+    }
+    // Pad flatMyosinBonds if needed.
+    if (current_n_myosinBonds < max_n_myosin_bonds) {
+        int padRows = max_n_myosin_bonds - current_n_myosinBonds;
+        for (int i = 0; i < padRows; i++) {
+            flatMyosinBonds.push_back(-1);
+            flatMyosinBonds.push_back(-1);
+        }
+    }
+
+    // Now that each flattened vector has a size corresponding to (max_n * 2),
+    // the new dimensions for appending one frame are {1, max_n, 2}.
+    hsize_t newActinDims[3] = {1, static_cast<hsize_t>(max_n_actin_bonds), 2};
+    hsize_t newMyosinDims[3] = {1, static_cast<hsize_t>(max_n_myosin_bonds), 2};
+
+    append_to_dataset(group_actin, "bonds", flatActinBonds, { newActinDims[0], newActinDims[1], newActinDims[2] });
+    append_to_dataset(group_myosin, "bonds", flatMyosinBonds, { newMyosinDims[0], newMyosinDims[1], newMyosinDims[2] });
 
     // int max_bonds = 5;
     // // Serialize actinIndicesPerActin.
@@ -267,7 +316,8 @@ std::vector<double> load_from_dataset(H5::Group& group, const std::string& datas
     return data;
 }
 
-void load_from_file(std::string& filename, Filament& actin, Myosin& myosin)
+void load_from_file(std::string& filename, Filament& actin, Myosin& myosin, 
+                    std::vector<std::vector<int>>& actin_actin_bonds, int& n_frames)
 {
     H5::H5File file(filename, H5F_ACC_RDONLY);
     H5::Group group_actin(file.openGroup("/actin"));
@@ -278,6 +328,7 @@ void load_from_file(std::string& filename, Filament& actin, Myosin& myosin)
 
     std::vector<hsize_t> dims;
     std::vector<double> actin_center = load_from_dataset(group_actin, "center", dims);
+    n_frames = static_cast<int>(dims[0]);
     // Extract the most recent actin center data.
     actin_center = std::vector<double>(actin_center.end() - 2 * n_actins, actin_center.end());
     for (int i = 0; i < actin.n; i++) {
@@ -290,6 +341,22 @@ void load_from_file(std::string& filename, Filament& actin, Myosin& myosin)
         actin.theta[i] = actin_theta[i];
     }
     actin.update_endpoints();
+
+    // The bonds dataset is assumed to have dimensions: (n_frames, max_n_actin_bonds, 2)
+    std::vector<double> flatActinBonds = load_from_dataset(group_actin, "bonds", dims);
+    // dims[0] is n_frames, dims[1] is max_n_actin_bonds, dims[2] should be 2.
+    // Extract the most recent frame:
+    size_t bonds_per_frame = dims[1] * dims[2];
+    flatActinBonds = std::vector<double>(flatActinBonds.end() - bonds_per_frame, flatActinBonds.end());
+    // For each bonded pair in the flat array, update the matrix.
+    for (size_t i = 0; i < flatActinBonds.size(); i += 2) {
+        int a = static_cast<int>(flatActinBonds[i]);
+        int b = static_cast<int>(flatActinBonds[i+1]);
+        if (a != -1 && b != -1) {
+            actin_actin_bonds[a][b] = 1;
+            actin_actin_bonds[b][a] = 1;
+        }
+    }
 
     std::vector<double> myosin_center = load_from_dataset(group_myosin, "center", dims);
     myosin_center = std::vector<double>(myosin_center.end() - 2 * n_myosins, myosin_center.end());

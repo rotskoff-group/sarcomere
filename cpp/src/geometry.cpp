@@ -505,13 +505,18 @@ am_interaction analyze_am(vec actin_left, vec actin_right,
     interaction.myosin_binding_ratio = std::get<0>(result);
     interaction.myosin_binding_start = std::get<1>(result);
     interaction.myosin_binding_end = std::get<2>(result);
+
     //crosslinkable
     interaction.crosslinkable_start = actin_left;
     interaction.crosslinkable_end = interaction.myosin_binding_start;
     interaction.crosslinkable_ratio = (interaction.crosslinkable_end-actin_left).norm()/actin_right.distance(actin_left,box);
+    if (interaction.crosslinkable_ratio<EPS){
+        interaction.partial_binding_ratio = 0.0;
+        return interaction;
+    }
     double dot = (actin_mid-actin_left).dot(myosin_mid-myosin_left);
     vec partial_start, partial_end;
-    if (dot>0){
+    if (dot > 0){
         partial_start = myosin_left;
         partial_end = myosin_left + (myosin_right-myosin_left)/3.0;
     }
@@ -519,10 +524,11 @@ am_interaction analyze_am(vec actin_left, vec actin_right,
         partial_start = myosin_right - (myosin_right-myosin_left)/3.0;
         partial_end = myosin_right;
     }
-    // printf("partial_start: %f %f\n",partial_start.x,partial_start.y);
-    // printf("partial_end: %f %f\n",partial_end.x,partial_end.y);
     std::tuple<double, vec, vec> result2 = subsegment_within_distance(actin_left, actin_right, partial_start, partial_end, d);
     interaction.partial_binding_ratio = std::get<0>(result2);
+    if (interaction.partial_binding_ratio < EPS){
+        interaction.crosslinkable_ratio = 0.0;
+    }
     return interaction;   
 }
 
