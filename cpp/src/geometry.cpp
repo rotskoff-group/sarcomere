@@ -8,256 +8,165 @@
 #include <tuple>
 #include <string>
 
-
 namespace geometry {
 
 const double EPS = 1e-9;
 
-// Modified function to compute the shortest distance between a point and a segment (with PBC)
-double point_segment_distance(vec x, vec a, vec b, std::vector<double> box)
-{
+// Helper: copy 4 vectors
+void copy_segments(const vec& a, const vec& b, const vec& c, const vec& d, vec& a_copy, vec& b_copy, vec& c_copy, vec& d_copy) {
+    a_copy = a;
+    b_copy = b;
+    c_copy = c;
+    d_copy = d;
+}
+
+// ------------------ Distance and Orientation Functions ------------------
+
+double point_segment_distance(const vec& x, const vec& a, const vec& b) {
     vec ab = b - a;
     double ab_norm = ab.norm();
-
     vec ab_normalized = {ab.x / ab_norm, ab.y / ab_norm};
-
     vec ap = x - a;
-    ap.pbc_wrap(box);
-
-    // Projection of ap onto ab
     double ap_ab = ap.x * ab_normalized.x + ap.y * ab_normalized.y;
-
-    // Clamp projection length to segment bounds
     ap_ab = std::fmax(0, std::fmin(ap_ab, ab_norm));
-
-    // Closest point on the segment
     vec closest_point = a + vec{ap_ab * ab_normalized.x, ap_ab * ab_normalized.y};
-
-    // Vector from x to closest point
     vec norm_vec = x - closest_point;
-    norm_vec.pbc_wrap(box);
-
-    // Distance to the segment
     return norm_vec.norm();
 }
 
-std::pair<double,vec> point_segment_distance_w_normal(vec x, vec a, vec b, std::vector <double> box){
-    // compute the shortest distance between a point x and a segment ab
+std::pair<double, vec> point_segment_distance_w_normal(const vec& x, const vec& a, const vec& b) {
     vec ab = b - a;
     double ab_norm = ab.norm();
     vec ab_normalized = {ab.x / ab_norm, ab.y / ab_norm};
     vec ap = x - a;
-    ap.pbc_wrap(box);
     double ap_ab = ap.x * ab_normalized.x + ap.y * ab_normalized.y;
     ap_ab = std::fmax(0, std::fmin(ap_ab, ab_norm));
     vec norm_vec = ap - vec{ap_ab * ab_normalized.x, ap_ab * ab_normalized.y};
-    double dist =  norm_vec.norm();
-    return std::make_pair(dist, norm_vec);
+    double dist = norm_vec.norm();
+    return {dist, norm_vec};
 }
 
-
-// Compute orientation of three points with PBC
-int orientation(const vec& p, const vec& q, const vec& r, const std::vector<double>& box)
-{
+int orientation(const vec& p, const vec& q, const vec& r) {
     vec pq = q - p;
     vec qr = r - q;
-
-    // Apply PBC wrapping
-    pq.pbc_wrap(box);
-    qr.pbc_wrap(box);
-
-    // Calculate the orientation value
     double val = pq.y * qr.x - pq.x * qr.y;
-    if (val == 0)
-        return 0;  // Collinear
-    return (val > 0) ? 1 : 2;  // Clockwise or Counterclockwise
+    if (val == 0) return 0;
+    return (val > 0) ? 1 : 2;
 }
 
-// Compute orientation of three points without PBC
-int orientation(const vec& p, const vec& q, const vec& r)
-{
-    vec pq = q - p;
-    vec qr = r - q;
+// ------------------ Apply PBC ------------------
 
-    // Calculate the orientation value
-    double val = pq.y * qr.x - pq.x * qr.y;
-    if (val == 0)
-        return 0;  // Collinear
-    return (val > 0) ? 1 : 2;  // Clockwise or Counterclockwise
+void apply_pbc(vec& actin_left, vec& actin_right, vec& myosin_left, vec& myosin_right, const std::vector<double>& box, const utils::PBCMask& pbc_mask){
+    vec actin_mid = (actin_left + actin_right) / 2;
+    vec myosin_mid = (myosin_left + myosin_right) / 2;
+    vec displacement = actin_mid - myosin_mid;
+    vec shift;
+
+    if (pbc_mask.x) shift.x = -box[0] * round(displacement.x / box[0]);
+    else shift.x = 0;
+    if (pbc_mask.y) shift.y = -box[1] * round(displacement.y / box[1]);
+    else shift.y = 0;
+
+    actin_left = actin_left + shift;
+    actin_right = actin_right + shift;
 }
 
+// ------------------ Segment Distance Functions ------------------
 
-// Compute the shortest distance between two segments with PBC
-double segment_segment_distance(const vec& a, const vec& b, const vec& c, const vec& d, const std::vector<double>& box)
-{
-    // Segments are ab and cd
-    double a_cd = point_segment_distance(a, c, d, box);
-    double b_cd = point_segment_distance(b, c, d, box);
-    double c_ab = point_segment_distance(c, a, b, box);
-    double d_ab = point_segment_distance(d, a, b, box);
+double segment_segment_distance(const vec& a, const vec& b, const vec& c, const vec& d, const std::vector<double>& box, const utils::PBCMask& pbc_mask) {
+    vec a_copy, b_copy, c_copy, d_copy;
+    copy_segments(a, b, c, d, a_copy, b_copy, c_copy, d_copy);
+    apply_pbc(a_copy, b_copy, c_copy, d_copy, box, pbc_mask);
 
-    double dist = std::fmin(std::fmin(a_cd, b_cd), std::fmin(c_ab, d_ab));
+    double a_cd = point_segment_distance(a_copy, c_copy, d_copy);
+    double b_cd = point_segment_distance(b_copy, c_copy, d_copy);
+    double c_ab = point_segment_distance(c_copy, a_copy, b_copy);
+    double d_ab = point_segment_distance(d_copy, a_copy, b_copy);
 
-    // Check if segments intersect
-    vec ab_center = {(a.x + b.x) / 2, (a.y + b.y) / 2};
-    vec cd_center = {(c.x + d.x) / 2, (c.y + d.y) / 2};
+    double dist = std::min({a_cd, b_cd, c_ab, d_ab});
 
-    // Calculate displacement due to PBC
-    vec displacement = {
-        box[0] * std::round((ab_center.x - cd_center.x) / box[0]),
-        box[1] * std::round((ab_center.y - cd_center.y) / box[1])
-    };
+    int o1 = orientation(a_copy, b_copy, c_copy);
+    int o2 = orientation(a_copy, b_copy, d_copy);
+    int o3 = orientation(c_copy, d_copy, a_copy);
+    int o4 = orientation(c_copy, d_copy, b_copy);
 
-    // Adjust a and b for displacement
-    vec a0 = a - displacement;
-    vec b0 = b - displacement;
-
-    // Check orientations
-    int o1 = orientation(a0, b0, c);
-    int o2 = orientation(a0, b0, d);
-    int o3 = orientation(c, d, a0);
-    int o4 = orientation(c, d, b0);
-
-    // If the orientations are such that the segments intersect, the distance is zero
-    if ((o1 != o2) && (o3 != o4))
-    {
-        dist = 0;
-    }
+    if ((o1 != o2) && (o3 != o4)) dist = 0;
 
     return dist;
 }
 
+std::pair<double, std::map<std::string, vec>> segment_segment_distance_w_normal(const vec& a, const vec& b, const vec& c, const vec& d, const std::vector<double>& box, const utils::PBCMask& pbc_mask) {
+    vec a_copy, b_copy, c_copy, d_copy;
+    copy_segments(a, b, c, d, a_copy, b_copy, c_copy, d_copy);
+    apply_pbc(a_copy, b_copy, c_copy, d_copy, box, pbc_mask);
 
-std::pair<double, std::map<std::string, vec>> segment_segment_distance_w_normal(const vec& a, const vec& b, const vec& c, const vec& d, const std::vector<double>& box) {
-    // Compute point-to-segment distances with normal vectors
-    std::pair<double, vec> a_cd = point_segment_distance_w_normal(a, c, d, box);
-    std::pair<double, vec> b_cd = point_segment_distance_w_normal(b, c, d, box);
-    std::pair<double, vec> c_ab = point_segment_distance_w_normal(c, a, b, box);
-    std::pair<double, vec> d_ab = point_segment_distance_w_normal(d, a, b, box);
+    auto a_cd = point_segment_distance_w_normal(a_copy, c_copy, d_copy);
+    auto b_cd = point_segment_distance_w_normal(b_copy, c_copy, d_copy);
+    auto c_ab = point_segment_distance_w_normal(c_copy, a_copy, b_copy);
+    auto d_ab = point_segment_distance_w_normal(d_copy, a_copy, b_copy);
 
-    // Get the distances
-    double a_cd_dist = a_cd.first;
-    double b_cd_dist = b_cd.first;
-    double c_ab_dist = c_ab.first;
-    double d_ab_dist = d_ab.first;
-
-    // Find the minimum distance
-    double dist = std::fmin(std::fmin(a_cd_dist, b_cd_dist), std::fmin(c_ab_dist, d_ab_dist));
-
-    // Create a map to store the normal vector information
+    double dist = std::min({a_cd.first, b_cd.first, c_ab.first, d_ab.first});
     std::map<std::string, vec> normal_dict;
 
-    // Determine which point-to-segment distance is the smallest and store the corresponding normal vector
-    if (dist == a_cd_dist) {
-        normal_dict["start"] = a;
+    if (dist == a_cd.first) {
+        normal_dict["start"] = a_copy;
         normal_dict["vector"] = a_cd.second;
-        normal_dict["end"] = a + a_cd.second;
-    } else if (dist == b_cd_dist) {
-        normal_dict["start"] = b;
+        normal_dict["end"] = a_copy + a_cd.second;
+    } else if (dist == b_cd.first) {
+        normal_dict["start"] = b_copy;
         normal_dict["vector"] = b_cd.second;
-        normal_dict["end"] = b + b_cd.second;
-    } else if (dist == c_ab_dist) {
-        normal_dict["end"] = c;
+        normal_dict["end"] = b_copy + b_cd.second;
+    } else if (dist == c_ab.first) {
+        normal_dict["end"] = c_copy;
         normal_dict["vector"] = -c_ab.second;
-        normal_dict["start"] = c - c_ab.second;
+        normal_dict["start"] = c_copy - c_ab.second;
     } else {
-        normal_dict["end"] = d;
+        normal_dict["end"] = d_copy;
         normal_dict["vector"] = -d_ab.second;
-        normal_dict["start"] = d - d_ab.second;
+        normal_dict["start"] = d_copy - d_ab.second;
     }
 
-    // Check if the segments intersect
-    vec ab_center = {(a.x + b.x) / 2, (a.y + b.y) / 2};
-    vec cd_center = {(c.x + d.x) / 2, (c.y + d.y) / 2};
+    int o1 = orientation(a_copy, b_copy, c_copy);
+    int o2 = orientation(a_copy, b_copy, d_copy);
+    int o3 = orientation(c_copy, d_copy, a_copy);
+    int o4 = orientation(c_copy, d_copy, b_copy);
 
-    // Calculate displacement due to PBC
-    vec displacement = {
-        box[0] * std::round((ab_center.x - cd_center.x) / box[0]),
-        box[1] * std::round((ab_center.y - cd_center.y) / box[1])
-    };
-
-    // Adjust a and b for displacement
-    vec a0 = a - displacement;
-    vec b0 = b - displacement;
-
-    // Check orientations to determine if the segments intersect
-    int o1 = orientation(a0, b0, c, box);
-    int o2 = orientation(a0, b0, d, box);
-    int o3 = orientation(c, d, a0, box);
-    int o4 = orientation(c, d, b0, box);
-
-    // If the segments intersect, set the distance to 0 and the normal vector to zero
     if ((o1 != o2) && (o3 != o4)) {
         dist = 0;
         normal_dict["vector"] = {0, 0};
     }
 
-    return std::make_pair(dist, normal_dict);
-
-}
-// Function to compute the dot product of two vectors
-double dotProduct(double x1, double y1, double x2, double y2) {
-    return x1 * x2 + y1 * y2;
+    return {dist, normal_dict};
 }
 
+// ------------------ Root Finding ------------------
 
-
-void apply_pbc(vec& actin_left, vec& actin_right, 
-                        vec& myosin_left, vec& myosin_right, std::vector<double> box){
-
-    vec actin_mid = (actin_left + actin_right) / 2;
-    vec myosin_mid = (myosin_left + myosin_right) / 2;
-    vec displacement = actin_mid - myosin_mid;
-    vec shift;
-    shift.x =  -box[0]*round(displacement.x/box[0]);
-    shift.y =  - box[1]*round(displacement.y/box[1]);
-    actin_left = actin_left + shift;
-    actin_right = actin_right + shift;
-}
-
-
-
-
-// Filter roots within the interval [t_start, t_end]
 std::vector<double> findRootsInInterval(const std::vector<double>& roots, double t_start, double t_end) {
     std::vector<double> valid_roots;
     for (double t : roots) {
-        if (t >= t_start - EPS && t <= t_end + EPS) {
-            valid_roots.push_back(t);
-        }
+        if (t >= t_start - EPS && t <= t_end + EPS) valid_roots.push_back(t);
     }
     return valid_roots;
 }
 
-
-
-
-// Solve quadratic equation: a*t^2 + b*t + c = 0
 std::vector<double> solveQuadratic(double a, double b, double c) {
     std::vector<double> roots;
     double discriminant = b * b - 4 * a * c;
 
-    if (discriminant < -EPS) {
-        // No real roots
-        return roots;
-    } else if (std::abs(discriminant) < EPS) {
-        // One real root
-        double t = -b / (2 * a);
-        roots.push_back(t);
+    if (discriminant < -EPS) return roots;
+    else if (std::abs(discriminant) < EPS) {
+        roots.push_back(-b / (2 * a));
     } else {
-        // Two real roots
         double sqrt_disc = std::sqrt(discriminant);
-        double t1 = (-b + sqrt_disc) / (2 * a);
-        double t2 = (-b - sqrt_disc) / (2 * a);
-        roots.push_back(t1);
-        roots.push_back(t2);
+        roots.push_back((-b + sqrt_disc) / (2 * a));
+        roots.push_back((-b - sqrt_disc) / (2 * a));
     }
     return roots;
 }
 
+// ------------------ Subsegment Search ------------------
 
-// Main function to find intervals on AB where distance to CD is less than d
-std::tuple<double,vec,vec> subsegment_within_distance(vec A, vec B, vec C, vec D, double d) {
+std::tuple<double, vec, vec> subsegment_within_distance(const vec& A, const vec& B, const vec& C, const vec& D, double& d) {
     std::vector<std::pair<vec, vec>> intervals;
     double interval_start = 1.0;
     double interval_end = 0.0;
@@ -455,89 +364,76 @@ std::tuple<double,vec,vec> subsegment_within_distance(vec A, vec B, vec C, vec D
     else{
         return {0.0,A,A};
     }
-    // // Merge overlapping intervals
-    // if (!intervals.empty()) {
-    //     // Sort intervals by t_start
-    //     std::sort(intervals.begin(), intervals.end(), [&](const std::pair<vec, vec>& a, const std::pair<vec, vec>& b) {
-    //         double t_a = (a.first - A).dot(dirAB) / lenAB_sq;
-    //         double t_b = (b.first - A).dot(dirAB) / lenAB_sq;
-    //         return t_a < t_b;
-    //     });
-
-    //     std::vector<std::pair<vec, vec>> merged_intervals;
-    //     auto current = intervals[0];
-
-    //     for (size_t i = 1; i < intervals.size(); ++i) {
-    //         double t_current_end = (current.second - A).dot(dirAB) / lenAB_sq;
-    //         double t_next_start = (intervals[i].first - A).dot(dirAB) / lenAB_sq;
-
-    //         if (t_next_start <= t_current_end + EPS) {
-    //             // Overlapping intervals, merge them
-    //             current.second = intervals[i].second;
-    //         } else {
-    //             merged_intervals.push_back(current);
-    //             current = intervals[i];
-    //         }
-    //     }
-    //     merged_intervals.push_back(current);
-    //     return merged_intervals;
-    // }
-
-    // return intervals;
 }
 
 
-
-std::tuple<double,vec,vec>subsegment_within_distance(vec A, vec B, vec C, vec D, double d, std::vector<double> box) {
-    apply_pbc(A, B, C, D, box);
-    return subsegment_within_distance(A, B, C, D, d);
+// Wrapper with PBC
+std::tuple<double, vec, vec> subsegment_within_distance(const vec& A, const vec& B, const vec& C, const vec& D, double& d, const std::vector<double>& box, const utils::PBCMask& pbc_mask) {
+    vec A_copy = A, B_copy = B, C_copy = C, D_copy = D;
+    apply_pbc(A_copy, B_copy, C_copy, D_copy, box, pbc_mask);
+    return subsegment_within_distance(A_copy, B_copy, C_copy, D_copy, d);
 }
 
+am_interaction analyze_am(const vec& actin_left, const vec& actin_right,
+    const vec& myosin_left, const vec& myosin_right,
+    double& d, const std::vector<double>& box, const utils::PBCMask& pbc_mask)
+{
+    // Step 1: Copy segments
+    vec actin_left_copy, actin_right_copy, myosin_left_copy, myosin_right_copy;
+    copy_segments(actin_left, actin_right, myosin_left, myosin_right,
+    actin_left_copy, actin_right_copy, myosin_left_copy, myosin_right_copy);
 
-// Function to calculate the points on segment 1 that are distance d away from segment 2
-am_interaction analyze_am(vec actin_left, vec actin_right, 
-                        vec myosin_left, vec myosin_right, double d, std::vector<double> box) {
-    apply_pbc(actin_left, actin_right, myosin_left, myosin_right, box);
-    vec actin_mid = 0.5 * (actin_left + actin_right);
-    vec myosin_mid = 0.5 * (myosin_left + myosin_right);
-    std::tuple<double, vec, vec> result = subsegment_within_distance(actin_left, actin_right, myosin_left, myosin_right, d);
+    // Step 2: Apply PBC on copies
+    apply_pbc(actin_left_copy, actin_right_copy, myosin_left_copy, myosin_right_copy, box, pbc_mask);
+
+    // Step 3: Analysis
+    vec actin_mid = 0.5 * (actin_left_copy + actin_right_copy);
+    vec myosin_mid = 0.5 * (myosin_left_copy + myosin_right_copy);
+
+    std::tuple<double, vec, vec> result = subsegment_within_distance(
+        actin_left_copy, actin_right_copy,
+        myosin_left_copy, myosin_right_copy, d);
+
     am_interaction interaction;
     interaction.myosin_binding_ratio = std::get<0>(result);
     interaction.myosin_binding_start = std::get<1>(result);
     interaction.myosin_binding_end = std::get<2>(result);
 
-    //crosslinkable
-    interaction.crosslinkable_start = actin_left;
+    // Crosslinkable
+    interaction.crosslinkable_start = actin_left_copy;
     interaction.crosslinkable_end = interaction.myosin_binding_start;
-    interaction.crosslinkable_ratio = (interaction.crosslinkable_end-actin_left).norm()/actin_right.distance(actin_left,box);
-    if (interaction.crosslinkable_ratio<EPS){
+    interaction.crosslinkable_ratio = (interaction.crosslinkable_end - actin_left_copy).norm() /
+                actin_right_copy.distance(actin_left_copy, box);
+
+    if (interaction.crosslinkable_ratio < EPS) {
         interaction.partial_binding_ratio = 0.0;
         return interaction;
     }
-    double dot = (actin_mid-actin_left).dot(myosin_mid-myosin_left);
+
+    // Partial binding
+    double dot = (actin_mid - actin_left_copy).dot(myosin_mid - myosin_left_copy);
     vec partial_start, partial_end;
-    if (dot > 0){
-        partial_start = myosin_left;
-        partial_end = myosin_left + (myosin_right-myosin_left)/3.0;
+    if (dot > 0) {
+        partial_start = myosin_left_copy;
+        partial_end = myosin_left_copy + (myosin_right_copy - myosin_left_copy) / 3.0;
+    } else {
+        partial_start = myosin_right_copy - (myosin_right_copy - myosin_left_copy) / 3.0;
+        partial_end = myosin_right_copy;
     }
-    else{
-        partial_start = myosin_right - (myosin_right-myosin_left)/3.0;
-        partial_end = myosin_right;
-    }
-    std::tuple<double, vec, vec> result2 = subsegment_within_distance(actin_left, actin_right, partial_start, partial_end, d);
+
+    std::tuple<double, vec, vec> result2 = subsegment_within_distance(
+    actin_left_copy, actin_right_copy,
+    partial_start, partial_end, d);
+
     interaction.partial_binding_ratio = std::get<0>(result2);
-    if (interaction.partial_binding_ratio < EPS){
+
+    if (interaction.partial_binding_ratio < EPS) {
         interaction.crosslinkable_ratio = 0.0;
     }
-    return interaction;   
+
+    return interaction;
 }
 
+
+
 } // namespace geometry
-
-
-
-
-
-
-
-

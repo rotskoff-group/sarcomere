@@ -15,8 +15,8 @@ Filament::Filament() : n(0), length(0) {
 }
 
 // Parameterized constructor.
-Filament::Filament(int n0, double length0, std::vector<double> box0, gsl_rng* rng)
-    : n(n0), length(length0), box(box0)
+Filament::Filament(int n0, double length0, std::vector<double> box0, utils::PBCMask pbc_mask0, gsl_rng* rng)
+    : n(n0), length(length0), box(box0), pbc_mask(pbc_mask0)
 {
     center.resize(n);
     theta.resize(n);
@@ -30,10 +30,25 @@ Filament::Filament(int n0, double length0, std::vector<double> box0, gsl_rng* rn
     
     // Randomly initialize the center positions and theta values.
     for (int i = 0; i < n; i++) {
-        center[i].x = gsl_ran_flat(rng, -0.5 * box[0], 0.5 * box[0]);
-        center[i].y = gsl_ran_flat(rng, -0.5 * box[1], 0.5 * box[1]);
         theta[i] = gsl_ran_flat(rng, 0, 2 * M_PI);
+        if (!pbc_mask.x) {
+            double dx = 0.5 * length * std::abs(std::cos(theta[i]));
+            double x_min = -0.5 * box[0] + dx;
+            double x_max =  0.5 * box[0] - dx;
+            center[i].x = gsl_ran_flat(rng, x_min, x_max);
+        } else {
+            center[i].x = gsl_ran_flat(rng, -0.5 * box[0], 0.5 * box[0]);
+        }
+        if (!pbc_mask.y) {
+            double dy = 0.5 * length * std::abs(std::sin(theta[i]));
+            double y_min = -0.5 * box[1] + dy;
+            double y_max =  0.5 * box[1] - dy;
+            center[i].y = gsl_ran_flat(rng, y_min, y_max);
+        } else {
+            center[i].y = gsl_ran_flat(rng, -0.5 * box[1], 0.5 * box[1]);
+        }
     }
+
     update_endpoints();
 }
 
@@ -57,25 +72,55 @@ Filament::Filament(const Filament& other) {
     velocity = other.velocity;
     f_load = other.f_load;
     custom_features = other.custom_features;
+    pbc_mask = other.pbc_mask;
 }
 
-// Displace function (translation only).
-void Filament::displace(int& i, double& dx, double& dy) {
-    center[i].x += dx;
-    center[i].y += dy;
-    center[i].pbc_wrap(box);
-    update_endpoints(i);
-}
-
-// Displace function (translation and rotation).
 void Filament::displace(int& i, double& dx, double& dy, double& dtheta) {
-    center[i].x += dx;
-    center[i].y += dy;
-    center[i].pbc_wrap(box);
-    theta[i] += dtheta;
-    utils::angle_wrap(theta[i]);
-    update_endpoints(i);
+    if (pbc_mask.x && pbc_mask.y) {
+        center[i].x += dx;
+        center[i].y += dy;
+        center[i].pbc_wrap(box);
+        theta[i] += dtheta;
+        utils::angle_wrap(theta[i]);
+        update_endpoints(i);
+    } else{
+        // Proposed new center and angle
+        vec proposed_center = center[i];
+        proposed_center.x += dx;
+        proposed_center.y += dy;
+
+        double proposed_theta = theta[i] + dtheta;
+        utils::angle_wrap(proposed_theta);
+
+        // Compute proposed endpoints
+        double dx_seg = 0.5 * length * std::cos(proposed_theta);
+        double dy_seg = 0.5 * length * std::sin(proposed_theta);
+        double y1 = proposed_center.y - dy_seg;
+        double y2 = proposed_center.y + dy_seg;
+        if (!pbc_mask.x) {
+            double x1 = proposed_center.x - dx_seg;
+            double x2 = proposed_center.x + dx_seg;
+            // Check if either endpoint is outside the x-boundaries
+            if (x1 < -0.5 * box[0] || x1 > 0.5 * box[0] ||
+                x2 < -0.5 * box[0] || x2 > 0.5 * box[0]) {
+                return; // Reject move
+            }
+        }
+        if (!pbc_mask.y) {
+            // Check if either endpoint is outside the y-boundaries
+            if (y1 < -0.5 * box[1] || y1 > 0.5 * box[1] ||
+                y2 < -0.5 * box[1] || y2 > 0.5 * box[1]) {
+                return; // Reject move
+            }
+        }
+        // Accept move
+        center[i] = proposed_center;
+        center[i].pbc_wrap(box, pbc_mask);
+        theta[i] = proposed_theta;
+        update_endpoints(i);
+    }
 }
+
 
 // Update endpoints for the i-th filament.
 void Filament::update_endpoints(int& i) {
@@ -139,8 +184,8 @@ Myosin::Myosin() : Filament() {
 }
 
 // Parameterized constructor.
-Myosin::Myosin(int n0, double length0, double radius0, std::vector<double> box0, gsl_rng* rng)
-    : Filament(n0, length0, box0, rng), radius(radius0)
+Myosin::Myosin(int n0, double length0, double radius0, std::vector<double> box0, utils::PBCMask pbc_mask0, gsl_rng* rng)
+    : Filament(n0, length0, box0, pbc_mask0, rng), radius(radius0)
 {
     // Additional initialization if needed.
 }

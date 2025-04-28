@@ -17,33 +17,32 @@
 #include "neighborlist.h"
 
 // Alias for convenience.
-using vector = std::vector<double>;
 using interaction = geometry::am_interaction;
 const double EPS = 1e-6;
 
 class Sarcomere {
 public:
     // Public Data Members
+    utils::PBCMask pbc_mask;
     Filament actin;
     Myosin myosin;
     NeighborList neighbor_list;
     utils::MoleculeConnection myosinIndicesPerActin;
     utils::MoleculeConnection actinIndicesPerMyosin;
     utils::MoleculeConnection actinIndicesPerActin;
-
     std::vector<std::vector<int>> actin_actin_bonds, actin_actin_bonds_prev;
-    vector box;
+    std::vector<double> box;
     double k_aa, kappa_aa, cb_mult_factor, k_on, k_off,
            kappa_am, k_am, v_am, crosslinker_length, myosin_radius_ratio, skin_distance, cutoff_radius,
            dt, base_lifetime, lifetime_coeff, diff_coeff_ratio;
     bool directional;
     int fix_myosin;
     std::vector<std::vector<interaction>> am_interaction;
-    vector actin_crosslink_ratio;
+    std::vector<double> actin_crosslink_ratio;
     std::vector<int> actin_n_bonds;
     std::vector<int> n_myosins_per_actin;
     std::vector<std::pair<std::vector<int>, std::vector<int>>> actin_neighbors_by_species;
-    vector actin_basic_tension;
+    std::vector<double> actin_basic_tension;
         
     gsl_rng* rng;
     std::string filename;
@@ -56,10 +55,10 @@ public:
 
     // Constructors & Destructor
     Sarcomere();
-    Sarcomere(int& n_actins, int& n_myosins, vector box0, double& actin_length, double& myosin_length,
+    Sarcomere(int& n_actins, int& n_myosins, std::vector<double> box0, double& actin_length, double& myosin_length,
               double& myosin_radius, double& myosin_radius_ratio, double& crosslinker_length, double& k_on, double& k_off,
               double& base_lifetime, double& lifetime_coeff, double& diff_coeff_ratio, double& k_aa, double& kappa_aa, double& k_am, double& kappa_am, double& v_am,
-              std::string& filename, gsl_rng* rng, int& seed, int& fix_myosin, double& dt, bool& directional);
+              std::string& filename, gsl_rng* rng, int& seed, int& fix_myosin, double& dt, bool& directional, std::string& boundary_condition);
     ~Sarcomere();
 
     // Public Methods
@@ -89,7 +88,7 @@ private:
     double _get_cb_strength(int& i, int& j);
     void _get_f_load(int& i);
     void _set_cb(int& i, int& j, double& normalized_strength, bool& add_connection);
-    void _set_cb(int& i, std::vector<int> indices, vector cb_strength);
+    void _set_cb(int& i, std::vector<int> indices, std::vector<double> cb_strength);
     void _apply_cb_alignment_bias(double& k_theta_bias);
     std::pair<std::vector<double>, std::vector<double>>  _extract_bonded_pairs(
         const std::vector<std::vector<int>>& actin_actin_bonds,

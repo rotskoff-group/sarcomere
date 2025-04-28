@@ -15,7 +15,6 @@ int main(int argc, char* argv[]){
     double actin_diff_coeff_rot;
     double myosin_diff_coeff_trans;
     double myosin_diff_coeff_rot;
-    int update_dt_every;
     int save_every;
     double k_on;
     double k_off;
@@ -38,7 +37,7 @@ int main(int argc, char* argv[]){
     bool resume;
     bool directional;
     int n_fixed_myosins;
-
+    std::string boundary_condition;
     std::string filename;
     std::string init_struc;
     try {
@@ -53,9 +52,8 @@ int main(int argc, char* argv[]){
             ("actin_diff_coeff_rot", "Actin rotational diffusion coefficient", cxxopts::value<double>(actin_diff_coeff_rot)->default_value("2"))
             ("myosin_diff_coeff_trans", "Myosin translational diffusion coefficient", cxxopts::value<double>(myosin_diff_coeff_trans)->default_value("0.05"))
             ("myosin_diff_coeff_rot", "Myosin rotational diffusion coefficient", cxxopts::value<double>(myosin_diff_coeff_rot)->default_value("0.05"))
-            ("update_dt_every", "Update dt every", cxxopts::value<int>(update_dt_every)->default_value("500"))
             ("save_every", "Save every", cxxopts::value<int>(save_every)->default_value("200"))
-            ("k_on", "k_on", cxxopts::value<double>(k_on)->default_value("100"))
+            ("k_on", "k_on", cxxopts::value<double>(k_on)->default_value("1000"))
             ("k_off", "k_off", cxxopts::value<double>(k_off)->default_value("1"))
             ("base_lifetime", "Base lifetime", cxxopts::value<double>(base_lifetime)->default_value("0.0"))
             ("lifetime_coeff", "Lifetime coefficient", cxxopts::value<double>(lifetime_coeff)->default_value("0.4"))
@@ -76,6 +74,7 @@ int main(int argc, char* argv[]){
             ("resume", "Resume", cxxopts::value<bool>(resume)->default_value("false"))
             ("directional", "Directional", cxxopts::value<bool>(directional)->default_value("true"))
             ("n_fixed_myosins", "Number of fixed myosins", cxxopts::value<int>(n_fixed_myosins)->default_value("0"))
+            ("boundary_condition", "Boundary condition, options: periodic, mixed", cxxopts::value<std::string>(boundary_condition)->default_value("periodic"))
             ("filename", "Filename", cxxopts::value<std::string>(filename)->default_value("data/traj.h5"))
             ("initial_structure", "Type of initial structure", cxxopts::value<std::string>(init_struc)->default_value("random"))
             ("h, help", "Print usage");
@@ -103,7 +102,7 @@ int main(int argc, char* argv[]){
                         myosin_radius, myosin_radius_ratio, crosslinker_length, k_on, k_off,
                         base_lifetime, lifetime_coeff, diff_coeff_ratio,
                           k_aa, kappa_aa, k_am, kappa_am, v_am,
-                        filename,rng, seed, n_fixed_myosins, dt, directional);
+                        filename,rng, seed, n_fixed_myosins, dt, directional, boundary_condition);
     Langevin sim(model, beta, dt, actin_diff_coeff_trans,actin_diff_coeff_rot, myosin_diff_coeff_trans, myosin_diff_coeff_rot, save_every, resume);
     if (!resume){
         if (init_struc == "sarcomere") {

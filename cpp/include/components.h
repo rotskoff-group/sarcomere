@@ -21,6 +21,7 @@ public:
     int n;
     std::vector<double> box;
     double length;
+    utils::PBCMask pbc_mask;
     std::vector<vec> center;
     std::vector<double> theta;
     std::vector<vec> left_end;
@@ -36,12 +37,11 @@ public:
 
     // Constructors and destructor.
     Filament();
-    Filament(int n0, double length0, std::vector<double> box0, gsl_rng* rng);
+    Filament(int n0, double length0, std::vector<double> box0, utils::PBCMask pbc_mask0, gsl_rng* rng);
     virtual ~Filament();
     Filament(const Filament& other);
 
     // Member functions.
-    void displace(int& i, double& dx, double& dy);
     void displace(int& i, double& dx, double& dy, double& dtheta);
     void update_endpoints(int& i);
     void update_endpoints();
@@ -61,7 +61,7 @@ public:
 
     // Constructors.
     Myosin();
-    Myosin(int n0, double length0, double radius0, std::vector<double> box0, gsl_rng* rng);
+    Myosin(int n0, double length0, double radius0, std::vector<double> box0, utils::PBCMask pbc_mask0, gsl_rng* rng);
     Myosin(const Myosin& other);
 };
 

@@ -8,8 +8,17 @@
 #include <numeric>
 #include <utility>
 #include <omp.h>
+#include <string>
+
 
 namespace utils {
+
+    
+struct PBCMask {
+    bool x;
+    bool y;
+};
+    
 
 //------------------------------------------------------------------------------
 // The vec structure: represents a 2D vector/point and provides common operations.
@@ -68,6 +77,15 @@ struct vec {
         y = y - box[1] * std::round(y / box[1]);
     }
 
+    // Wrap the x coordinate according to periodic boundary conditions.
+    // The box vector is assumed to contain the periodic lengths in x and y.
+    void pbc_wrap(const std::vector<double>& box, PBCMask pbc_mask) {
+        if (pbc_mask.x){
+            x = x - box[0] * std::round(x / box[0]);}
+        if (pbc_mask.y){
+            y = y - box[1] * std::round(y / box[1]);}
+    }   
+
     // Euclidean distance (no periodic boundaries).
     double distance(const vec& p) const {
         return std::sqrt((x - p.x) * (x - p.x) + (y - p.y) * (y - p.y));
@@ -92,29 +110,22 @@ struct vec {
         return x * p.x + y * p.y;
     }
     
-
-
     // Squared norm.
     double norm_squared() const {
         return x * x + y * y;
     }
 };
 
+
 //------------------------------------------------------------------------------
 // Free function declarations (definitions are provided in utils.cpp)
 //------------------------------------------------------------------------------
 
-// Wrap a coordinate value using periodic boundary conditions.
-double pbc_wrap(double x, double& box);
-
-// Wrap an angle into the interval (–π, π] (or any 2π interval).
-void angle_wrap(double& theta);
-
-// Compute the dot product of two 2D vectors (given as four doubles).
-double dotProduct(double x1, double y1, double x2, double y2);
+PBCMask parse_pbc_mask(const std::string& mode);
 
 bool compare_indices(const std::vector<int>& a, const std::vector<int>& b);
 
+void angle_wrap(double& theta);
 
 //------------------------------------------------------------------------------
 // MoleculeConnection class declaration

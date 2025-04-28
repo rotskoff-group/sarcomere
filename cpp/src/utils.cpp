@@ -1,6 +1,8 @@
 #include "utils.h"
 #include <algorithm>  // For std::find
 #include <cmath>      // For std::sqrt, std::round, and M_PI
+#include <stdexcept>
+
 
 namespace utils {
 
@@ -8,16 +10,19 @@ namespace utils {
 // Definitions of free functions
 //------------------------------------------------------------------------------
 
-double pbc_wrap(double x, double& box) {
-    return x - box * std::round(x / box);
+// Parse PBC mode from string
+PBCMask parse_pbc_mask(const std::string& mode) {
+    if (mode == "periodic") {
+        return PBCMask{true, true};
+    } else if (mode == "mixed") {
+        return PBCMask{true, false};
+    } else {
+        throw std::invalid_argument("Invalid PBC mode: " + mode + ". Use 'periodic' or 'mixed'.");
+    }
 }
 
 void angle_wrap(double& theta) {
     theta = theta - 2 * M_PI * std::round(theta / (2 * M_PI));
-}
-
-double dotProduct(double x1, double y1, double x2, double y2) {
-    return x1 * x2 + y1 * y2;
 }
 
 bool compare_indices(const std::vector<int>& a, const std::vector<int>& b) {

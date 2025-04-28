@@ -31,7 +31,7 @@ public:
     void sample_step(double& dt, gsl_rng* rng, int& fix_myosin);
 
     // Data members.
-    double dt, beta, acc_rate, D_actin_trans, D_actin_rot, D_myosin_trans, D_myosin_rot;
+    double dt, beta, D_actin_trans, D_actin_rot, D_myosin_trans, D_myosin_rot;
     int save_every, start_step;
     Sarcomere& model;
 };
