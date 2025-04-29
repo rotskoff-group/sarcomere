@@ -50,6 +50,10 @@ double segment_segment_distance(
     const utils::PBCMask& pbc_mask
 );
 
+// Compute the shortest distance between two segments (with PBC)
+double segment_segment_distance(
+    const vec& a, const vec& b, const vec& c, const vec& d
+);
 // Compute the shortest distance and normal vector between two segments (with PBC)
 std::pair<double, std::map<std::string, vec>> segment_segment_distance_w_normal(
     const vec& a, const vec& b, const vec& c, const vec& d,

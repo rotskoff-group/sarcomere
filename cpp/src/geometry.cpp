@@ -77,18 +77,21 @@ double segment_segment_distance(const vec& a, const vec& b, const vec& c, const 
     vec a_copy, b_copy, c_copy, d_copy;
     copy_segments(a, b, c, d, a_copy, b_copy, c_copy, d_copy);
     apply_pbc(a_copy, b_copy, c_copy, d_copy, box, pbc_mask);
+    return segment_segment_distance(a_copy, b_copy, c_copy, d_copy);
+}
 
-    double a_cd = point_segment_distance(a_copy, c_copy, d_copy);
-    double b_cd = point_segment_distance(b_copy, c_copy, d_copy);
-    double c_ab = point_segment_distance(c_copy, a_copy, b_copy);
-    double d_ab = point_segment_distance(d_copy, a_copy, b_copy);
+double segment_segment_distance(const vec& a, const vec& b, const vec& c, const vec& d) {
+    double a_cd = point_segment_distance(a, c, d);
+    double b_cd = point_segment_distance(b, c, d);
+    double c_ab = point_segment_distance(c, a, b);
+    double d_ab = point_segment_distance(d, a, b);
 
     double dist = std::min({a_cd, b_cd, c_ab, d_ab});
 
-    int o1 = orientation(a_copy, b_copy, c_copy);
-    int o2 = orientation(a_copy, b_copy, d_copy);
-    int o3 = orientation(c_copy, d_copy, a_copy);
-    int o4 = orientation(c_copy, d_copy, b_copy);
+    int o1 = orientation(a, b, c);
+    int o2 = orientation(a, b, d);
+    int o3 = orientation(c, d, a);
+    int o4 = orientation(c, d, b);
 
     if ((o1 != o2) && (o3 != o4)) dist = 0;
 
@@ -151,6 +154,7 @@ std::vector<double> findRootsInInterval(const std::vector<double>& roots, double
 
 std::vector<double> solveQuadratic(double a, double b, double c) {
     std::vector<double> roots;
+    roots.reserve(2);
     double discriminant = b * b - 4 * a * c;
 
     if (discriminant < -EPS) return roots;
@@ -167,6 +171,10 @@ std::vector<double> solveQuadratic(double a, double b, double c) {
 // ------------------ Subsegment Search ------------------
 
 std::tuple<double, vec, vec> subsegment_within_distance(const vec& A, const vec& B, const vec& C, const vec& D, double& d) {
+    double min_dist = segment_segment_distance(A, B, C, D);
+    if (min_dist > d) {
+        return std::make_tuple(0.0, A, A);
+    }
     std::vector<std::pair<vec, vec>> intervals;
     double interval_start = 1.0;
     double interval_end = 0.0;
@@ -183,7 +191,7 @@ std::tuple<double, vec, vec> subsegment_within_distance(const vec& A, const vec&
     }
     // Find transition points where closest point on CD changes
     std::vector<double> boundaries = {0.0, 1.0};
-
+    boundaries.reserve(4);
     if (lenAB_sq > EPS) {
         // Compute t where normals from C and D intersect AB
         vec AC = A - C;
@@ -247,6 +255,7 @@ std::tuple<double, vec, vec> subsegment_within_distance(const vec& A, const vec&
 
             // Filter roots within [t_start, t_end]
             std::vector<double> valid_roots;
+            valid_roots.reserve(roots.size());
             for (double t_root : roots) {
                 if (t_root >= t_start - EPS && t_root <= t_end + EPS) {
                     valid_roots.push_back(t_root);
@@ -255,6 +264,7 @@ std::tuple<double, vec, vec> subsegment_within_distance(const vec& A, const vec&
 
             // Collect interval points
             std::vector<double> interval_points = {t_start};
+            interval_points.reserve(valid_roots.size() + 2);
             interval_points.insert(interval_points.end(), valid_roots.begin(), valid_roots.end());
             interval_points.push_back(t_end);
 
@@ -311,6 +321,7 @@ std::tuple<double, vec, vec> subsegment_within_distance(const vec& A, const vec&
 
             // Filter roots within [t_start, t_end]
             std::vector<double> valid_roots;
+            valid_roots.reserve(roots.size());
             for (double t_root : roots) {
                 if (t_root >= t_start - EPS && t_root <= t_end + EPS) {
                     valid_roots.push_back(t_root);
@@ -319,6 +330,7 @@ std::tuple<double, vec, vec> subsegment_within_distance(const vec& A, const vec&
 
             // Collect interval points
             std::vector<double> interval_points = {t_start};
+            interval_points.reserve(valid_roots.size() + 2);
             interval_points.insert(interval_points.end(), valid_roots.begin(), valid_roots.end());
             interval_points.push_back(t_end);
 

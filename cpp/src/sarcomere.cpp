@@ -233,42 +233,6 @@ void Sarcomere::sarcomeric_structure(){
     update_system();
 }
 
-// void Sarcomere::sarcomeric_structure(){
-//     std::vector<std::vector<double>> myosin_positions;
-//     box[0] = 5.32;
-//     box[1] = 5.32;
-//     myosin_positions = {{-1.33, -1.0}, {1.33, -1.0}, {-1.33, 0.0}, {1.33, 0.0}, {-1.33, 1.0}, {1.33, 1.0}};
-//     for (int i = 0; i < myosin_positions.size(); i++){
-//         myosin.center[i].x = myosin_positions[i][0];
-//         myosin.center[i].y = myosin_positions[i][1];
-//         myosin.theta[i] = 0;
-//     }
-//     //myosin.n = myosin_positions.size();
-//     myosin.update_endpoints();
-//     //alpha_actinin.n = alpha_actinin_positions.size();
-//     std::vector<std::vector<double>> actin_positions;
-//     actin_positions = {{0.5, -1.15}, {0.5, -1.0}, {0.5, -0.85}, {0.5, -0.15}, {0.5, 0.0}, {0.5, 0.15}, 
-//                 {0.5, 0.85}, {0.5, 1.0}, {0.5, 1.15}, {-2.16, -1.15}, {-2.16, -1.0}, {-2.16, -0.85}, 
-//                 {-2.16, -0.15}, {-2.16, 0.0}, {-2.16, 0.15}, {-2.16, 0.85}, {-2.16, 1.0}, {-2.16, 1.15}};
-//     for (int i = 0; i < actin_positions.size(); i++){
-//         actin.center[i].x = actin_positions[i][0];
-//         actin.center[i].y = actin_positions[i][1];
-//         actin.theta[i] = 0;
-//     }
-//     int n = actin_positions.size();
-//     actin_positions = {{-0.5, -1.15}, {-0.5, -1.0}, {-0.5, -0.85}, {-0.5, -0.15}, {-0.5, 0.0}, {-0.5, 0.15}, 
-//                 {-0.5, 0.85}, {-0.5, 1.0}, {-0.5, 1.15},{2.16, -1.15}, {2.16, -1.0}, {2.16, -0.85}, 
-//                 {2.16, -0.15}, {2.16, 0.0}, {2.16, 0.15}, {2.16, 0.85}, {2.16, 1.0}, {2.16, 1.15}};
-//     for (int i = 0; i < actin_positions.size(); i++){
-//         actin.center[i+n].x = actin_positions[i][0];
-//         actin.center[i+n].y = actin_positions[i][1];
-//         actin.theta[i+n] = M_PI;
-//     }
-//     //actin.n = actin_positions.size()*2;
-//     actin.update_endpoints();
-//     update_system();
-//     //save_state();
-// }
 
 void Sarcomere::update_system() {
     std::vector<double> myosin_max_load(myosin.n, 0);

@@ -43,7 +43,7 @@ def plot_filaments(center,thetas,l,Lx,Ly,ax,color='k',color_spectrum=None,transp
             
         # transparency is 0.3 where color_spectrum is 0 and 1 elsewhere
         if color_spectrum is not None and transparency is None:
-            alpha = 0.3 + 0.7 * (color_spectrum[i] > 0)
+            alpha = 0.3 + 0.7 * np.clip(color_spectrum[i],0,1)
             kwargs['alpha'] = alpha
 
         x = center[i,0]
@@ -91,10 +91,10 @@ def plot_filaments(center,thetas,l,Lx,Ly,ax,color='k',color_spectrum=None,transp
             elif x-np.abs(delta_x)<-Lx/2:
                 ax.arrow(x-delta_x+Lx, y-delta_y+Ly, 2*delta_x, 2*delta_y,
                             head_width=0.1, head_length=0.1, fc=color, ec=color,**kwargs)
-    # Add color bar
-    if color_spectrum is not None:
-        cbar = plt.colorbar(sm, ax=ax, orientation='vertical', fraction=0.02, pad=0.04)
-        cbar.set_label('Catch bond strength')
+    # # Add color bar
+    # if color_spectrum is not None:
+    #     cbar = plt.colorbar(sm, ax=ax, orientation='vertical', fraction=0.02, pad=0.04)
+    #     cbar.set_label('Catch bond strength')
 
 def plot_myosin(center,thetas,l,Lx,Ly,radius,ax,color='k'):
     for i in range(center.shape[0]):
@@ -104,30 +104,30 @@ def plot_myosin(center,thetas,l,Lx,Ly,radius,ax,color='k'):
         delta_x = l/2 * np.cos(theta) - radius * np.sin(theta)
         delta_y = l/2 * np.sin(theta) + radius * np.cos(theta)
         #plot a rectangle to represent the myosin
-        ax.add_patch(Rectangle((x-delta_x,y-delta_y),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.5))
+        ax.add_patch(Rectangle((x-delta_x,y-delta_y),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.75))
         #plot the periodic images
-        ax.add_patch(Rectangle((x-delta_x-Lx,y-delta_y),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.5))
-        ax.add_patch(Rectangle((x-delta_x+Lx,y-delta_y),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.5))
-        ax.add_patch(Rectangle((x-delta_x,y-delta_y-Ly),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.5))
-        ax.add_patch(Rectangle((x-delta_x,y-delta_y+Ly),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.5))
-        ax.add_patch(Rectangle((x-delta_x-Lx,y-delta_y-Ly),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.5))
-        ax.add_patch(Rectangle((x-delta_x+Lx,y-delta_y-Ly),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.5))
-        ax.add_patch(Rectangle((x-delta_x-Lx,y-delta_y+Ly),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.5))
-        ax.add_patch(Rectangle((x-delta_x+Lx,y-delta_y+Ly),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.5))
+        ax.add_patch(Rectangle((x-delta_x-Lx,y-delta_y),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.75))
+        ax.add_patch(Rectangle((x-delta_x+Lx,y-delta_y),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.75))
+        ax.add_patch(Rectangle((x-delta_x,y-delta_y-Ly),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.75))
+        ax.add_patch(Rectangle((x-delta_x,y-delta_y+Ly),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.75))
+        ax.add_patch(Rectangle((x-delta_x-Lx,y-delta_y-Ly),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.75))
+        ax.add_patch(Rectangle((x-delta_x+Lx,y-delta_y-Ly),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.75))
+        ax.add_patch(Rectangle((x-delta_x-Lx,y-delta_y+Ly),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.75))
+        ax.add_patch(Rectangle((x-delta_x+Lx,y-delta_y+Ly),width=l,height=2*radius,angle=theta*180/math.pi,fill=True,facecolor=color,alpha=0.75))
         #draw spheres at the ends of the myosin
         end_pts = np.array([[x-l/2*np.cos(theta),y-l/2*np.sin(theta)],[x+l/2*np.cos(theta),y+l/2*np.sin(theta)]])
         theta_perp = np.array([[theta*180/math.pi+90,theta*180/math.pi-90],[theta*180/math.pi-90,theta*180/math.pi+90]])
         for pt,theta_p in zip(end_pts,theta_perp):
             #draw a circle with no edge to represent the myosin head
-            ax.add_artist(Wedge((pt[0], pt[1]), radius, color=color, alpha=0.5, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
-            ax.add_artist(Wedge((pt[0]-Lx, pt[1]), radius, color=color, alpha=0.5, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
-            ax.add_artist(Wedge((pt[0]+Lx, pt[1]), radius, color=color, alpha=0.5, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
-            ax.add_artist(Wedge((pt[0], pt[1]-Ly), radius, color=color, alpha=0.5, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
-            ax.add_artist(Wedge((pt[0], pt[1]+Ly), radius, color=color, alpha=0.5, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
-            ax.add_artist(Wedge((pt[0]-Lx, pt[1]-Ly), radius, color=color, alpha=0.5, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
-            ax.add_artist(Wedge((pt[0]+Lx, pt[1]-Ly), radius, color=color, alpha=0.5, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
-            ax.add_artist(Wedge((pt[0]-Lx, pt[1]+Ly), radius, color=color, alpha=0.5, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
-            ax.add_artist(Wedge((pt[0]+Lx, pt[1]+Ly), radius, color=color, alpha=0.5, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
+            ax.add_artist(Wedge((pt[0], pt[1]), radius, color=color, alpha=0.75, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
+            ax.add_artist(Wedge((pt[0]-Lx, pt[1]), radius, color=color, alpha=0.75, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
+            ax.add_artist(Wedge((pt[0]+Lx, pt[1]), radius, color=color, alpha=0.75, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
+            ax.add_artist(Wedge((pt[0], pt[1]-Ly), radius, color=color, alpha=0.75, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
+            ax.add_artist(Wedge((pt[0], pt[1]+Ly), radius, color=color, alpha=0.75, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
+            ax.add_artist(Wedge((pt[0]-Lx, pt[1]-Ly), radius, color=color, alpha=0.75, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
+            ax.add_artist(Wedge((pt[0]+Lx, pt[1]-Ly), radius, color=color, alpha=0.75, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
+            ax.add_artist(Wedge((pt[0]-Lx, pt[1]+Ly), radius, color=color, alpha=0.75, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
+            ax.add_artist(Wedge((pt[0]+Lx, pt[1]+Ly), radius, color=color, alpha=0.75, linewidth=0,theta1=theta_p[0],theta2=theta_p[1]))
 
            
 
@@ -154,12 +154,12 @@ def plot_system(frame,data,myosin_radius,actin_length,myosin_length, Lx,Ly):
         force_centers = actin_center + actin_force/2
         # plot_filaments(force_centers, force_theta,force_mag,Lx=Lx, Ly=Ly,ax=ax, color='pink',linestyle='dashed')
         # velocity_centers = actin_center + actin_velocity/2
-        # plot_filaments(velocity_centers, velocity_theta,velocity_mag,Lx=Lx, Ly=Ly,ax=ax, color='pink',linestyle='dashed',alpha=0.8)
+        # plot_filaments(velocity_centers, velocity_theta,velocity_mag,Lx=Lx, Ly=Ly,ax=ax, color='pink',linestyle='dashed',alpha=0.75)
 
         actin_angular_force = data["/actin/angular_force"][frame][:,0]
         angular_theta = ((actin_angular_force>0)-0.5)*np.pi
         #plot_filaments(actin_center,angular_theta,np.abs(actin_angular_force),Lx=Lx, Ly=Ly,ax=ax, color='pink',linestyle='dotted')
-        plot_myosin(data["/myosin/center"][frame], data["/myosin/theta"][frame][:,0],myosin_length,Lx=Lx, Ly=Ly,radius=myosin_radius,ax=ax,color='C1')
+        plot_myosin(data["/myosin/center"][frame], data["/myosin/theta"][frame][:,0],myosin_length,Lx=Lx, Ly=Ly,radius=myosin_radius,ax=ax,color='pink')
 
         myosin_force = data["/myosin/force"][frame]
         force_theta = np.arctan2(myosin_force[:,1],myosin_force[:,0])
@@ -173,7 +173,11 @@ def plot_system(frame,data,myosin_radius,actin_length,myosin_length, Lx,Ly):
         #plot_filaments(data["/myosin/center"][frame],angular_theta,np.abs(myosin_angular_force),Lx=Lx, Ly=Ly,ax=ax, color='pink',linestyle='dotted')
         ax.set_xlim(-Lx/2, Lx/2)
         ax.set_ylim(-Ly/2, Ly/2)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.axis('off')
         ax.set_aspect("equal")
+        plt.tight_layout(pad=0)
         return fig,ax
 
 def plot(ind, nframes, nworkers,**kwargs):
@@ -181,7 +185,7 @@ def plot(ind, nframes, nworkers,**kwargs):
     frame_end = max(int((ind+1)*(nframes)/nworkers),1)
     for frame in range(frame_start,frame_end):
         fig, ax = plot_system(frame=frame,**kwargs)
-        plt.savefig(file_format.format(frame_dir,frame))
+        plt.savefig(file_format.format(frame_dir, frame), bbox_inches='tight', pad_inches=0)
         plt.close(fig)
 
 
@@ -224,7 +228,6 @@ if __name__ == "__main__":
 
     traj = h5py.File(filename, 'r')
     data = hdf5_to_dict(traj)
-    # energy = data["/energy/total_energy"]
     traj = h5py.File(filename, 'r')
     data = hdf5_to_dict(traj)
     nframes = data["/actin/center"].shape[0]
